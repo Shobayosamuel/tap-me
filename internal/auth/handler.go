@@ -27,10 +27,17 @@ func (h *Handler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	user, _ := h.service.GetUserFromToken(tokens.AccessToken)
+	userResponse := UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		IsActive: user.IsActive,
+	}
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "User registered successfully",
 		"tokens":  tokens,
+		"user":    userResponse,
 	})
 }
 
