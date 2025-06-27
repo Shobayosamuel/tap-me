@@ -48,7 +48,7 @@ func (s *service) Register(req RegisterRequest) (*TokenResponse, error) {
 		Password: hashed_password,
 		IsActive: true,
 	}
-	if err := s.userRepo.Create(user);err == nil {
+	if err := s.userRepo.Create(user); err != nil {
 		return nil, errors.New("failed to create new user")
 	}
 
