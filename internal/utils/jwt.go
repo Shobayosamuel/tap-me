@@ -46,7 +46,7 @@ func init() {
 	refreshTTL = time.Hour * time.Duration(refreshTTLHours)
 }
 
-func GenerateAcessToken(user models.User) (string, error) {
+func GenerateAccessToken(user models.User) (string, error) {
 	claims := &Claims{
 		UserID: user.ID,
 		Username: user.Username,
