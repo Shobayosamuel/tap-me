@@ -124,7 +124,7 @@ func (r *roomRepository) UpdateMemberRole(roomID, userID uint, role models.Membe
 		Where("room_id = ? AND user_id = ?", roomID, userID).
 		Update("role", role).Error
 }
-
+	
 func (r *roomRepository) Update(room *models.Room) error {
 	return r.db.Save(room).Error
 }

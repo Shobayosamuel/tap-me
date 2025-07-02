@@ -9,7 +9,7 @@ import (
 type Hub struct {
 	clients    map[*Client]bool
 	rooms      map[uint]map[*Client]bool
-	register   chan *Client
+	Register   chan *Client
 	unregister chan *Client
 	broadcast  chan *BroadcastMessage
 	joinRoom   chan *JoinRoomRequest
@@ -51,7 +51,7 @@ func NewHub(chatService ChatService) *Hub {
 	return &Hub{
 		clients:     make(map[*Client]bool),
 		rooms:       make(map[uint]map[*Client]bool),
-		register:    make(chan *Client),
+		Register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		broadcast:   make(chan *BroadcastMessage),
 		joinRoom:    make(chan *JoinRoomRequest),
@@ -64,7 +64,7 @@ func NewHub(chatService ChatService) *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
-		case client := <-h.register:
+		case client := <-h.Register:
 			h.clients[client] = true
 			log.Printf("Client connected: %s", client.user.Username)
 

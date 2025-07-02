@@ -6,9 +6,11 @@ import (
 
 	"github.com/Shobayosamuel/tap-me/config"
 	"github.com/Shobayosamuel/tap-me/internal/auth"
+	"github.com/Shobayosamuel/tap-me/internal/chat"
 	"github.com/Shobayosamuel/tap-me/internal/middleware"
 	"github.com/Shobayosamuel/tap-me/internal/models"
 	"github.com/Shobayosamuel/tap-me/internal/repository"
+	"github.com/Shobayosamuel/tap-me/internal/ws"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,19 +24,41 @@ func main() {
 	db := setupDatabase(cfg)
 
 	// Auto migrate
-	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.User{}, &models.Room{}, &models.Message{}, &models.RoomMember{})
 
 	// Setup repositories
 	userRepo := repository.NewUserRepository(db)
+	roomRepo := repository.NewRoomRepository(db)
+	messageRepo := repository.NewMessageRepository(db)
 
 	// Setup services
 	authService := auth.NewService(userRepo)
+	chatService := chat.NewService(roomRepo, messageRepo, userRepo)
+
+	// Setup WebSocket hub
+	hub := ws.NewHub(chatService)
+	go hub.Run()
 
 	// Setup handlers
 	authHandler := auth.NewHandler(authService)
+	chatHandler := chat.NewHandler(chatService, authService, hub)
 
 	// Setup router
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Public routes
 	authGroup := r.Group("/auth")
@@ -44,12 +68,25 @@ func main() {
 		authGroup.POST("/refresh", authHandler.RefreshToken)
 	}
 
+	// WebSocket endpoint (token-based auth)
+	r.GET("/ws", chatHandler.HandleWebSocket)
+
 	// Protected routes
 	apiGroup := r.Group("/api")
 	apiGroup.Use(middleware.AuthMiddleware(authService))
 	{
+		// Auth routes
 		apiGroup.GET("/profile", authHandler.GetProfile)
-		// Add other protected routes here
+
+		// Chat routes
+		chatGroup := apiGroup.Group("/chat")
+		{
+			chatGroup.POST("/rooms", chatHandler.CreateRoom)
+			chatGroup.GET("/rooms", chatHandler.GetUserRooms)
+			chatGroup.GET("/rooms/:roomId/messages", chatHandler.GetRoomMessages)
+			chatGroup.POST("/rooms/:roomId/join", chatHandler.JoinRoom)
+			chatGroup.GET("/rooms/:roomId/online", chatHandler.GetOnlineUsers)
+		}
 	}
 
 	// Start server
