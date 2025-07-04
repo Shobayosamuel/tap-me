@@ -121,3 +121,5 @@ func (s *service) CanUserAccessRoom(userID, roomID uint) (bool, error) {
 func (s *service) GetRoomMembers(roomID uint) ([]models.User, error) {
 	return s.roomRepo.GetMembers(roomID)
 }
+
+func (s *service) CreateCall()

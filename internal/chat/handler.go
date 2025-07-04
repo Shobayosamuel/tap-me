@@ -3,6 +3,7 @@ package chat
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Shobayosamuel/tap-me/internal/auth"
 	"github.com/Shobayosamuel/tap-me/internal/models"
@@ -10,6 +11,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+// Call related structures
+type InitiateCallRequest struct {
+	ReceiverID uint `json:"receiver_id" binding:"required"`
+	RoomID     uint `json:"room_id" binding:"required"`
+	CallType   string `json:"call_type" binding:"required,oneof=audio video"` // for future video support
+}
+
+type CallResponse struct {
+	CallID     string    `json:"call_id"`
+	CallerID   uint      `json:"caller_id"`
+	ReceiverID uint      `json:"receiver_id"`
+	RoomID     uint      `json:"room_id"`
+	CallType   string    `json:"call_type"`
+	Status     string    `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type RespondToCallRequest struct {
+	CallID   string `json:"call_id" binding:"required"`
+	Response string `json:"response" binding:"required,oneof=accept reject"`
+}
 
 type Handler struct {
 	service Service
@@ -161,4 +184,34 @@ func (h *Handler) GetOnlineUsers(c *gin.Context) {
 
 	onlineUsers := h.hub.GetOnlineUsers(uint(roomID))
 	c.JSON(http.StatusOK, gin.H{"online_users": onlineUsers})
+}
+
+func (h *Handler)  InitiateCall(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	var req InitiateCallRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// check if both users are in the room
+	canAccessRoom, err := h.service.CanUserAccessRoom(user.ID, req.RoomID)
+	if err != nil || !canAccessRoom {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have access to this room"})
+		return
+	}
+
+	canReceiverAccessRoom, err := h.service.CanUserAccessRoom(req.ReceiverID, req.RoomID)
+	if err != nil || !canReceiverAccessRoom {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Receiver doensn't have access to this room"})
+		return
+	}
+	// check if the receiver is online
+
+	if !h.hub.IsUserOnline(req.ReceiverID, req.RoomID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User is not online!"})
+		return
+	}
+	
+
 }

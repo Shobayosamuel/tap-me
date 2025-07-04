@@ -229,3 +229,15 @@ func (h *Hub) GetOnlineUsers(roomID uint) []*models.User {
 	}
 	return users
 }
+
+func (h *Hub) IsUserOnline(userID, roomID uint) bool {
+	// todo: check if the user is online in this room
+	if roomClients, exists := h.rooms[roomID]; exists {
+		for client := range roomClients {
+			if client.user.ID == userID {
+				return true
+			}
+		}
+	}
+	return false
+}
