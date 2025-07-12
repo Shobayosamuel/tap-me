@@ -65,11 +65,11 @@ func (s *service) Login(req LoginRequest) (*TokenResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 	if !utils.CheckPassword(req.Password, user.Password) {
-		return nil, errors.New("Incorrect credentials")
+		return nil, errors.New("incorrect credentials")
 	}
 
 	if !user.IsActive {
-		return nil, errors.New("User is not activated")
+		return nil, errors.New("user is not activated")
 	}
 	// return generated token
 	return s.generateTokens(*user)
